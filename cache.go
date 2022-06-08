@@ -100,7 +100,6 @@ type Value interface{}
 type Cache struct {
 	mu                sync.RWMutex
 	buckets           *shardBuckets
-	nodes             int32
 	size              int32
 	cacher            Cacher
 	closed            bool
@@ -229,9 +228,6 @@ func (r *Cache) Get(key string, setFunc func() (size int, value Value, d time.Du
 				})
 			}
 			atomic.AddInt32(&r.size, int32(n.size))
-		} else {
-			// node has existed, add the ref
-			atomic.AddInt32(&n.ref, 1)
 		}
 		n.mu.Unlock()
 		if r.cacher != nil {
@@ -242,7 +238,7 @@ func (r *Cache) Get(key string, setFunc func() (size int, value Value, d time.Du
 	return nil
 }
 
-// Evict evicts 'cache node' with the given namespace and key. This will
+// Evict evicts 'cache node' with the given key. This will
 // simply call Cacher.Evict.
 //
 // Evict return true is such 'cache node' exist.

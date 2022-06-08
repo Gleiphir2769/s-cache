@@ -106,7 +106,8 @@ func TestCacheMap(t *testing.T) {
 
 				})
 				if v := h.Value().(int); v != key {
-					t.Fatalf("# invalid value: want=%d got=%d", objects[key].val, v)
+					t.Errorf("# invalid value: want=%d got=%d", objects[key].val, v)
+					return
 				}
 				if !atomic.CompareAndSwapPointer(&handles[r.Intn(len(handles))], nil, unsafe.Pointer(h)) {
 					h.Release()
@@ -500,7 +501,7 @@ func TestLRUCache_Delete(t *testing.T) {
 		delFuncCalled++
 	}
 
-	c := NewCache(DefaultExpiration, DefaultCleanupInterval, NewLRU(2))
+	c := NewCache(NoExpiration, DefaultCleanupInterval, NewLRU(2))
 	set(c, "1", 1, 1, nil).Release()
 	set(c, "2", 2, 1, nil).Release()
 

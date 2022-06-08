@@ -54,7 +54,7 @@ func makeShardBuckets(r *Cache, shardCount int) *shardBuckets {
 	rnd, err := rand.Int(rand.Reader, max)
 	var seed uint32
 	if err != nil {
-		os.Stderr.Write([]byte("WARNING: n-cache's MakeShardDict failed to read from the system CSPRNG (/dev/urandom or equivalent.) Your system's security may be compromised. Continuing with an insecure seed.\n"))
+		os.Stderr.Write([]byte("WARNING: s-cache's makeShardBuckets failed to read from the system CSPRNG (/dev/urandom or equivalent.) Your system's security may be compromised. Continuing with an insecure seed.\n"))
 		seed = insecurerand.Uint32()
 	} else {
 		seed = uint32(rnd.Uint64())
@@ -101,6 +101,8 @@ func (s *shardBuckets) get(r *Cache, key string, noset bool) (n *Node, added boo
 
 	n, exists := shared.m[key]
 	if exists {
+		// node has existed, add the ref
+		atomic.AddInt32(&n.ref, 1)
 		return n, false
 	} else if !exists && !noset {
 		n = &Node{
