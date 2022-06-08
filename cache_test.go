@@ -238,93 +238,92 @@ func TestSimple(t *testing.T) {
 	}
 }
 
-//
-//func TestCacheMap_NilValue(t *testing.T) {
-//	c := NewCache(NewLRU(10))
-//	h := c.Get(0, 0, func() (size int, value Value) {
-//		return 1, nil
-//	})
-//	if h != nil {
-//		t.Error("cache handle is non-nil")
-//	}
-//	if c.Nodes() != 0 {
-//		t.Errorf("invalid nodes counter: want=%d got=%d", 0, c.Nodes())
-//	}
-//	if c.Size() != 0 {
-//		t.Errorf("invalid size counter: want=%d got=%d", 0, c.Size())
-//	}
-//}
-//
-//func TestLRUCache_GetLatency(t *testing.T) {
-//	runtime.GOMAXPROCS(runtime.NumCPU())
-//
-//	const (
-//		concurrentSet = 30
-//		concurrentGet = 3
-//		duration      = 3 * time.Second
-//		delay         = 3 * time.Millisecond
-//		maxkey        = 100000
-//	)
-//
-//	var (
-//		set, getHit, getAll        int32
-//		getMaxLatency, getDuration int64
-//	)
-//
-//	c := NewCache(NewLRU(5000))
-//	wg := &sync.WaitGroup{}
-//	until := time.Now().Add(duration)
-//	for i := 0; i < concurrentSet; i++ {
-//		wg.Add(1)
-//		go func(i int) {
-//			defer wg.Done()
-//			r := rand.New(rand.NewSource(time.Now().UnixNano()))
-//			for time.Now().Before(until) {
-//				c.Get(0, uint64(r.Intn(maxkey)), func() (int, Value) {
-//					time.Sleep(delay)
-//					atomic.AddInt32(&set, 1)
-//					return 1, 1
-//				}).Release()
-//			}
-//		}(i)
-//	}
-//	for i := 0; i < concurrentGet; i++ {
-//		wg.Add(1)
-//		go func(i int) {
-//			defer wg.Done()
-//			r := rand.New(rand.NewSource(time.Now().UnixNano()))
-//			for {
-//				mark := time.Now()
-//				if mark.Before(until) {
-//					h := c.Get(0, uint64(r.Intn(maxkey)), nil)
-//					latency := int64(time.Now().Sub(mark))
-//					m := atomic.LoadInt64(&getMaxLatency)
-//					if latency > m {
-//						atomic.CompareAndSwapInt64(&getMaxLatency, m, latency)
-//					}
-//					atomic.AddInt64(&getDuration, latency)
-//					if h != nil {
-//						atomic.AddInt32(&getHit, 1)
-//						h.Release()
-//					}
-//					atomic.AddInt32(&getAll, 1)
-//				} else {
-//					break
-//				}
-//			}
-//		}(i)
-//	}
-//
-//	wg.Wait()
-//	getAvglatency := time.Duration(getDuration) / time.Duration(getAll)
-//	t.Logf("set=%d getHit=%d getAll=%d getMaxLatency=%v getAvgLatency=%v",
-//		set, getHit, getAll, time.Duration(getMaxLatency), getAvglatency)
-//
-//	if getAvglatency > delay/3 {
-//		t.Errorf("get avg latency > %v: got=%v", delay/3, getAvglatency)
-//	}
-//}
-//
+func TestCacheMap_NilValue(t *testing.T) {
+	c := NewCache(NoExpiration, 100*time.Millisecond, NewLRU(10))
+	h := c.Get("0", func() (size int, value Value, delay time.Duration) {
+		return 1, nil, NoExpiration
+	})
+	if h != nil {
+		t.Error("cache handle is non-nil")
+	}
+	if c.Nodes() != 0 {
+		t.Errorf("invalid nodes counter: want=%d got=%d", 0, c.Nodes())
+	}
+	if c.Size() != 0 {
+		t.Errorf("invalid size counter: want=%d got=%d", 0, c.Size())
+	}
+}
+
+func TestLRUCache_GetLatency(t *testing.T) {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	const (
+		concurrentSet = 30
+		concurrentGet = 3
+		duration      = 3 * time.Second
+		delay         = 3 * time.Millisecond
+		maxkey        = 100000
+	)
+
+	var (
+		set, getHit, getAll        int32
+		getMaxLatency, getDuration int64
+	)
+
+	c := NewCache(NoExpiration, 100*time.Millisecond, NewLRU(5000))
+	wg := &sync.WaitGroup{}
+	until := time.Now().Add(duration)
+	for i := 0; i < concurrentSet; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			for time.Now().Before(until) {
+				c.Get(strconv.Itoa(r.Intn(maxkey)), func() (int, Value, time.Duration) {
+					time.Sleep(delay)
+					atomic.AddInt32(&set, 1)
+					return 1, 1, NoExpiration
+				}).Release()
+			}
+		}(i)
+	}
+	for i := 0; i < concurrentGet; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			for {
+				mark := time.Now()
+				if mark.Before(until) {
+					h := c.Get(strconv.Itoa(r.Intn(maxkey)), nil)
+					latency := int64(time.Now().Sub(mark))
+					m := atomic.LoadInt64(&getMaxLatency)
+					if latency > m {
+						atomic.CompareAndSwapInt64(&getMaxLatency, m, latency)
+					}
+					atomic.AddInt64(&getDuration, latency)
+					if h != nil {
+						atomic.AddInt32(&getHit, 1)
+						h.Release()
+					}
+					atomic.AddInt32(&getAll, 1)
+				} else {
+					break
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	getAvglatency := time.Duration(getDuration) / time.Duration(getAll)
+	t.Logf("set=%d getHit=%d getAll=%d getMaxLatency=%v getAvgLatency=%v",
+		set, getHit, getAll, time.Duration(getMaxLatency), getAvglatency)
+
+	if getAvglatency > delay/3 {
+		t.Errorf("get avg latency > %v: got=%v", delay/3, getAvglatency)
+	}
+}
+
 //func TestLRUCache_HitMiss(t *testing.T) {
 //	cases := []struct {
 //		key   uint64
@@ -343,13 +342,13 @@ func TestSimple(t *testing.T) {
 //	}
 //
 //	setfin := 0
-//	c := NewCache(NewLRU(1000))
+//	c := NewCache(NoExpiration, 100*time.Millisecond, NewLRU(1000))
 //	for i, x := range cases {
-//		set(c, 0, x.key, x.value, len(x.value), func() {
+//		set(c, strconv.Itoa(int(x.key)), x.value, len(x.value), func() {
 //			setfin++
 //		}).Release()
 //		for j, y := range cases {
-//			h := c.Get(0, y.key, nil)
+//			h := c.Get(strconv.Itoa(int(y.key)), nil)
 //			if j <= i {
 //				// should hit
 //				if h == nil {
@@ -373,7 +372,7 @@ func TestSimple(t *testing.T) {
 //
 //	for i, x := range cases {
 //		finalizerOk := false
-//		c.Delete(0, x.key, func() {
+//		c.Delete(strconv.Itoa(int(x.key)), func() {
 //			finalizerOk = true
 //		})
 //
@@ -382,7 +381,7 @@ func TestSimple(t *testing.T) {
 //		}
 //
 //		for j, y := range cases {
-//			h := c.Get(0, y.key, nil)
+//			h := c.Get(strconv.Itoa(int(y.key)), nil)
 //			if j > i {
 //				// should hit
 //				if h == nil {
@@ -408,7 +407,7 @@ func TestSimple(t *testing.T) {
 //		t.Errorf("some set finalizer may not be executed, want=%d got=%d", len(cases), setfin)
 //	}
 //}
-//
+
 //func TestLRUCache_Eviction(t *testing.T) {
 //	c := NewCache(NewLRU(12))
 //	o1 := set(c, 0, 1, 1, 1, nil)
@@ -548,34 +547,34 @@ func TestLRUCache_Delete(t *testing.T) {
 	}
 }
 
-//func TestLRUCache_Close(t *testing.T) {
-//	relFuncCalled := 0
-//	relFunc := func() {
-//		relFuncCalled++
-//	}
-//	delFuncCalled := 0
-//	delFunc := func() {
-//		delFuncCalled++
-//	}
-//
-//	c := NewCache(NewLRU(2))
-//	set(c, 0, 1, 1, 1, relFunc).Release()
-//	set(c, 0, 2, 2, 1, relFunc).Release()
-//
-//	h3 := set(c, 0, 3, 3, 1, relFunc)
-//	if h3 == nil {
-//		t.Error("Cache.Get on #3 return nil")
-//	}
-//	if ok := c.Delete(0, 3, delFunc); !ok {
-//		t.Error("Cache.Delete on #3 return false")
-//	}
-//
-//	c.Close()
-//
-//	if relFuncCalled != 3 {
-//		t.Errorf("relFunc isn't called 3 times: got=%d", relFuncCalled)
-//	}
-//	if delFuncCalled != 1 {
-//		t.Errorf("delFunc isn't called 1 times: got=%d", delFuncCalled)
-//	}
-//}
+func TestLRUCache_Close(t *testing.T) {
+	relFuncCalled := 0
+	relFunc := func() {
+		relFuncCalled++
+	}
+	delFuncCalled := 0
+	delFunc := func() {
+		delFuncCalled++
+	}
+
+	c := NewCache(NoExpiration, 100*time.Millisecond, NewLRU(2))
+	set(c, "1", 1, 1, relFunc).Release()
+	set(c, "2", 2, 1, relFunc).Release()
+
+	h3 := set(c, "3", 3, 1, relFunc)
+	if h3 == nil {
+		t.Error("Cache.Get on #3 return nil")
+	}
+	if ok := c.Delete("3", delFunc); !ok {
+		t.Error("Cache.Delete on #3 return false")
+	}
+
+	c.Close()
+
+	if relFuncCalled != 3 {
+		t.Errorf("relFunc isn't called 3 times: got=%d", relFuncCalled)
+	}
+	if delFuncCalled != 1 {
+		t.Errorf("delFunc isn't called 1 times: got=%d", delFuncCalled)
+	}
+}

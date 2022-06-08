@@ -316,10 +316,16 @@ func (r *Cache) Delete(key string, onDel func()) bool {
 func (r *Cache) delete(n *Node) bool {
 	n, deleted := r.buckets.remove(n.key)
 	if deleted {
+		// Call releaser.
+		if n.value != nil {
+			if r, ok := n.value.(Releaser); ok {
+				r.Release()
+			}
+			n.value = nil
+		}
 		for _, f := range n.onDel {
 			f()
 		}
-
 		// Update counter.
 		atomic.AddInt32(&r.size, int32(n.size)*-1)
 	}
@@ -343,7 +349,7 @@ func (r *Cache) Close() error {
 				f()
 			}
 			n.onDel = nil
-			return true
+			return false
 		})
 	}
 
