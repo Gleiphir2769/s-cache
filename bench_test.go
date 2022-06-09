@@ -7,7 +7,6 @@
 package s_cache
 
 import (
-	"github.com/patrickmn/go-cache"
 	"math/rand"
 	"strconv"
 	"testing"
@@ -30,18 +29,18 @@ func BenchmarkLRUCache(b *testing.B) {
 	})
 }
 
-func BenchmarkGOCache(b *testing.B) {
-	c := cache.New(cache.DefaultExpiration, time.Second*10)
-
-	b.SetParallelism(10)
-	b.RunParallel(func(pb *testing.PB) {
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-		for pb.Next() {
-			key := strconv.Itoa(r.Intn(1000000000))
-			if _, ok := c.Get(key); !ok {
-				c.Set(key, key, cache.NoExpiration)
-			}
-		}
-	})
-}
+//func BenchmarkGOCache(b *testing.B) {
+//	c := cache.New(cache.DefaultExpiration, time.Second*10)
+//
+//	b.SetParallelism(10)
+//	b.RunParallel(func(pb *testing.PB) {
+//		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+//
+//		for pb.Next() {
+//			key := strconv.Itoa(r.Intn(1000000000))
+//			if _, ok := c.Get(key); !ok {
+//				c.Set(key, key, cache.NoExpiration)
+//			}
+//		}
+//	})
+//}
