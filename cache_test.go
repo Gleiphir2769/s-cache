@@ -324,137 +324,90 @@ func TestLRUCache_GetLatency(t *testing.T) {
 	}
 }
 
-//func TestLRUCache_HitMiss(t *testing.T) {
-//	cases := []struct {
-//		key   uint64
-//		value string
-//	}{
-//		{1, "vvvvvvvvv"},
-//		{100, "v1"},
-//		{0, "v2"},
-//		{12346, "v3"},
-//		{777, "v4"},
-//		{999, "v5"},
-//		{7654, "v6"},
-//		{2, "v7"},
-//		{3, "v8"},
-//		{9, "v9"},
-//	}
-//
-//	setfin := 0
-//	c := NewCache(NoExpiration, 100*time.Millisecond, NewLRU(1000))
-//	for i, x := range cases {
-//		set(c, strconv.Itoa(int(x.key)), x.value, len(x.value), func() {
-//			setfin++
-//		}).Release()
-//		for j, y := range cases {
-//			h := c.Get(strconv.Itoa(int(y.key)), nil)
-//			if j <= i {
-//				// should hit
-//				if h == nil {
-//					t.Errorf("case '%d' iteration '%d' is miss", i, j)
-//				} else {
-//					if x := h.Value().(releaserFunc).value.(string); x != y.value {
-//						t.Errorf("case '%d' iteration '%d' has invalid value got '%s', want '%s'", i, j, x, y.value)
-//					}
-//				}
-//			} else {
-//				// should miss
-//				if h != nil {
-//					t.Errorf("case '%d' iteration '%d' is hit , value '%s'", i, j, h.Value().(releaserFunc).value.(string))
-//				}
-//			}
-//			if h != nil {
-//				h.Release()
-//			}
-//		}
-//	}
-//
-//	for i, x := range cases {
-//		finalizerOk := false
-//		c.Delete(strconv.Itoa(int(x.key)), func() {
-//			finalizerOk = true
-//		})
-//
-//		if !finalizerOk {
-//			t.Errorf("case %d delete finalizer not executed", i)
-//		}
-//
-//		for j, y := range cases {
-//			h := c.Get(strconv.Itoa(int(y.key)), nil)
-//			if j > i {
-//				// should hit
-//				if h == nil {
-//					t.Errorf("case '%d' iteration '%d' is miss", i, j)
-//				} else {
-//					if x := h.Value().(releaserFunc).value.(string); x != y.value {
-//						t.Errorf("case '%d' iteration '%d' has invalid value got '%s', want '%s'", i, j, x, y.value)
-//					}
-//				}
-//			} else {
-//				// should miss
-//				if h != nil {
-//					t.Errorf("case '%d' iteration '%d' is hit, value '%s'", i, j, h.Value().(releaserFunc).value.(string))
-//				}
-//			}
-//			if h != nil {
-//				h.Release()
-//			}
-//		}
-//	}
-//
-//	if setfin != len(cases) {
-//		t.Errorf("some set finalizer may not be executed, want=%d got=%d", len(cases), setfin)
-//	}
-//}
+func TestLRUCache_HitMiss(t *testing.T) {
+	cases := []struct {
+		key   uint64
+		value string
+	}{
+		{1, "vvvvvvvvv"},
+		{100, "v1"},
+		{0, "v2"},
+		{12346, "v3"},
+		{777, "v4"},
+		{999, "v5"},
+		{7654, "v6"},
+		{2, "v7"},
+		{3, "v8"},
+		{9, "v9"},
+	}
 
-//func TestLRUCache_Eviction(t *testing.T) {
-//	c := NewCache(NewLRU(12))
-//	o1 := set(c, 0, 1, 1, 1, nil)
-//	set(c, 0, 2, 2, 1, nil).Release()
-//	set(c, 0, 3, 3, 1, nil).Release()
-//	set(c, 0, 4, 4, 1, nil).Release()
-//	set(c, 0, 5, 5, 1, nil).Release()
-//	if h := c.Get(0, 2, nil); h != nil { // 1,3,4,5,2
-//		h.Release()
-//	}
-//	set(c, 0, 9, 9, 10, nil).Release() // 5,2,9
-//
-//	for _, key := range []uint64{9, 2, 5, 1} {
-//		h := c.Get(0, key, nil)
-//		if h == nil {
-//			t.Errorf("miss for key '%d'", key)
-//		} else {
-//			if x := h.Value().(int); x != int(key) {
-//				t.Errorf("invalid value for key '%d' want '%d', got '%d'", key, key, x)
-//			}
-//			h.Release()
-//		}
-//	}
-//	o1.Release()
-//	for _, key := range []uint64{1, 2, 5} {
-//		h := c.Get(0, key, nil)
-//		if h == nil {
-//			t.Errorf("miss for key '%d'", key)
-//		} else {
-//			if x := h.Value().(int); x != int(key) {
-//				t.Errorf("invalid value for key '%d' want '%d', got '%d'", key, key, x)
-//			}
-//			h.Release()
-//		}
-//	}
-//	for _, key := range []uint64{3, 4, 9} {
-//		h := c.Get(0, key, nil)
-//		if h != nil {
-//			t.Errorf("hit for key '%d'", key)
-//			if x := h.Value().(int); x != int(key) {
-//				t.Errorf("invalid value for key '%d' want '%d', got '%d'", key, key, x)
-//			}
-//			h.Release()
-//		}
-//	}
-//}
-//
+	setfin := 0
+	c := NewCache(NoExpiration, 100*time.Millisecond, NewLRU(1000))
+	for i, x := range cases {
+		set(c, strconv.Itoa(int(x.key)), x.value, len(x.value), func() {
+			setfin++
+		}).Release()
+		for j, y := range cases {
+			h := c.Get(strconv.Itoa(int(y.key)), nil)
+			if j <= i {
+				// should hit
+				if h == nil {
+					t.Errorf("case '%d' iteration '%d' is miss", i, j)
+				} else {
+					if x := h.Value().(releaserFunc).value.(string); x != y.value {
+						t.Errorf("case '%d' iteration '%d' has invalid value got '%s', want '%s'", i, j, x, y.value)
+					}
+				}
+			} else {
+				// should miss
+				if h != nil {
+					t.Errorf("case '%d' iteration '%d' is hit , value '%s'", i, j, h.Value().(releaserFunc).value.(string))
+				}
+			}
+			if h != nil {
+				h.Release()
+			}
+		}
+	}
+
+	for i, x := range cases {
+		finalizerOk := false
+		c.Delete(strconv.Itoa(int(x.key)), func() {
+			finalizerOk = true
+		})
+
+		if !finalizerOk {
+			t.Errorf("case %d delete finalizer not executed", i)
+		}
+
+		for j, y := range cases {
+			h := c.Get(strconv.Itoa(int(y.key)), nil)
+			if j > i {
+				// should hit
+				if h == nil {
+					t.Errorf("case '%d' iteration '%d' is miss", i, j)
+				} else {
+					if x := h.Value().(releaserFunc).value.(string); x != y.value {
+						t.Errorf("case '%d' iteration '%d' has invalid value got '%s', want '%s'", i, j, x, y.value)
+					}
+				}
+			} else {
+				// should miss
+				if h != nil {
+					t.Errorf("case '%d' iteration '%d' is hit, value '%s'", i, j, h.Value().(releaserFunc).value.(string))
+				}
+			}
+			if h != nil {
+				h.Release()
+			}
+		}
+	}
+
+	if setfin != len(cases) {
+		t.Errorf("some set finalizer may not be executed, want=%d got=%d", len(cases), setfin)
+	}
+}
+
 func TestLRUCache_Evict(t *testing.T) {
 	c := NewCache(NoExpiration, DefaultExpiration, NewLRU(6))
 	set(c, "1", 1, 1, nil).Release()

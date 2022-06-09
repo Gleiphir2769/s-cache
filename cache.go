@@ -1,7 +1,7 @@
 package s_cache
 
 import (
-	"s-cache/timewheel"
+	"github.com/Gleiphir2769/s-cache/timewheel"
 	"sync"
 	"sync/atomic"
 	"time"
