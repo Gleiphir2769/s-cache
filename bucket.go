@@ -118,68 +118,8 @@ func (s *shardBuckets) get(r *Cache, key string, noset bool) (n *Node, added boo
 	}
 }
 
-func (s *shardBuckets) put(key string, val *Node) (result int) {
-	if s == nil {
-		panic("dict is nil")
-	}
-	hashcode := s.hashAlgo(s.seed, key)
-	index := s.spread(hashcode)
-	shared := s.getShared(index)
-	shared.mutex.Lock()
-	defer shared.mutex.Unlock()
-
-	if _, ok := shared.m[key]; ok {
-		shared.m[key] = val
-		return 0
-	} else {
-		shared.m[key] = val
-		s.addCount()
-		return 1
-	}
-}
-
 func (s *shardBuckets) len() (length int) {
 	return int(atomic.LoadInt32(&s.count))
-}
-
-// PutIfAbsent if the key has existed, the value will not be replaced.
-func (s *shardBuckets) putIfAbsent(key string, val *Node) (result int) {
-	if s == nil {
-		panic("dict is nil")
-	}
-	hashcode := s.hashAlgo(s.seed, key)
-	index := s.spread(hashcode)
-	shared := s.getShared(index)
-	shared.mutex.Lock()
-	defer shared.mutex.Unlock()
-
-	if _, ok := shared.m[key]; ok {
-		return 0
-	} else {
-		shared.m[key] = val
-		s.addCount()
-		return 1
-	}
-}
-
-// PutIfExists the value will only be put when key has existed
-func (s *shardBuckets) putIfExists(key string, val *Node) (result int) {
-	if s == nil {
-		panic("dict is nil")
-	}
-	hashcode := s.hashAlgo(s.seed, key)
-	index := s.spread(hashcode)
-	shared := s.getShared(index)
-	shared.mutex.Lock()
-	defer shared.mutex.Unlock()
-
-	if _, ok := shared.m[key]; ok {
-		shared.m[key] = val
-		s.addCount()
-		return 1
-	} else {
-		return 0
-	}
 }
 
 func (s *shardBuckets) remove(key string) (val *Node, existed bool) {
