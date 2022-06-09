@@ -105,6 +105,7 @@ type Cache struct {
 	closed            bool
 	tw                *timewheel.TimeWheel
 	defaultExpiration time.Duration
+	onEvicted         func(string, interface{})
 }
 
 const (
@@ -214,8 +215,9 @@ func (r *Cache) Get(key string, setFunc func() (size int, value Value, d time.Du
 				n.unref()
 				return nil
 			}
-			var delay time.Duration
-			n.size, n.value, delay = setFunc()
+			size, value, delay := setFunc()
+			n.size = size
+			n.value = value
 			if delay == DefaultExpiration {
 				delay = r.defaultExpiration
 			}
@@ -227,7 +229,10 @@ func (r *Cache) Get(key string, setFunc func() (size int, value Value, d time.Du
 			}
 			if r.tw != nil {
 				r.tw.AddJob(key, delay, func() {
-					r.Evict(key)
+					existed := r.Evict(key)
+					if existed {
+						r.onEvicted(key, value)
+					}
 				})
 			}
 			atomic.AddInt32(&r.size, int32(n.size))
@@ -274,6 +279,12 @@ func (r *Cache) EvictAll() {
 	if r.cacher != nil {
 		r.cacher.EvictAll()
 	}
+}
+
+func (r *Cache) OnEvicted(f func(string, interface{})) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.onEvicted = f
 }
 
 // Delete removes and ban 'cache node' with the given key.

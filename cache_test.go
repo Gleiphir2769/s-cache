@@ -182,7 +182,12 @@ func TestLRUCache_Capacity(t *testing.T) {
 }
 
 func TestCacheMap_Expire(t *testing.T) {
+	evictedFuncCalled := 0
+	evictedFunc := func(k string, v interface{}) {
+		evictedFuncCalled++
+	}
 	c := NewCache(500*time.Millisecond, 100*time.Millisecond, NewLRU(10))
+	c.OnEvicted(evictedFunc)
 	c.Get("a", func() (size int, value Value, d time.Duration) {
 		return 1, 2, c.defaultExpiration
 	}).Release()
@@ -223,6 +228,10 @@ func TestCacheMap_Expire(t *testing.T) {
 	h = c.Get("d", nil)
 	if h == nil {
 		t.Error("Found d when it should have been automatically deleted (later than the default)")
+	}
+
+	if evictedFuncCalled != 3 {
+		t.Errorf("evictedFunc isn't called 3 times: got=%d", evictedFuncCalled)
 	}
 }
 
