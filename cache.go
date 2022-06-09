@@ -216,6 +216,9 @@ func (r *Cache) Get(key string, setFunc func() (size int, value Value, d time.Du
 			}
 			var delay time.Duration
 			n.size, n.value, delay = setFunc()
+			if delay == DefaultExpiration {
+				delay = r.defaultExpiration
+			}
 			if n.value == nil {
 				n.size = 0
 				n.mu.Unlock()
