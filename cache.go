@@ -230,7 +230,7 @@ func (r *Cache) Get(key string, setFunc func() (size int, value Value, d time.Du
 			if r.tw != nil {
 				r.tw.AddJob(key, delay, func() {
 					existed := r.Evict(key)
-					if existed {
+					if existed && r.onEvicted != nil {
 						r.onEvicted(key, value)
 					}
 				})

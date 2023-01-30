@@ -14,7 +14,7 @@ import (
 )
 
 func BenchmarkLRUCache(b *testing.B) {
-	c := NewCache(NoExpiration, DefaultCleanupInterval, NewLRU(10000000000000))
+	c := NewCache(NoExpiration, DefaultCleanupInterval, NewLFU(1000))
 
 	b.SetParallelism(10)
 	b.RunParallel(func(pb *testing.PB) {

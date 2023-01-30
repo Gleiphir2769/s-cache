@@ -181,6 +181,37 @@ func TestLRUCache_Capacity(t *testing.T) {
 	}
 }
 
+func TestLFUCache_Capacity(t *testing.T) {
+	c := NewCache(NoExpiration, DefaultCleanupInterval, NewLFU(10))
+	if c.Capacity() != 10 {
+		t.Errorf("invalid capacity: want=%d got=%d", 10, c.Capacity())
+	}
+	set(c, "1", 1, 1, nil).Release()
+	set(c, "2", 2, 2, nil).Release()
+	set(c, "1", 3, 3, nil).Release()
+	set(c, "1", 4, 1, nil).Release()
+	set(c, "2", 5, 1, nil).Release()
+	set(c, "3", 6, 1, nil).Release()
+	set(c, "4", 7, 1, nil).Release()
+	set(c, "5", 8, 1, nil).Release()
+	if c.Nodes() != 5 {
+		t.Errorf("invalid nodes counter: want=%d got=%d", 5, c.Nodes())
+	}
+	if c.Size() != 6 {
+		t.Errorf("invalid size counter: want=%d got=%d", 6, c.Size())
+	}
+	c.SetCapacity(5)
+	if c.Capacity() != 5 {
+		t.Errorf("invalid capacity: want=%d got=%d", 5, c.Capacity())
+	}
+	if c.Nodes() != 4 {
+		t.Errorf("invalid nodes counter: want=%d got=%d", 4, c.Nodes())
+	}
+	if c.Size() != 5 {
+		t.Errorf("invalid size counter: want=%d got=%d", 5, c.Size())
+	}
+}
+
 func TestCacheMap_Expire(t *testing.T) {
 	evictedFuncCalled := 0
 	evictedFunc := func(k string, v interface{}) {
@@ -538,5 +569,73 @@ func TestLRUCache_Close(t *testing.T) {
 	}
 	if delFuncCalled != 1 {
 		t.Errorf("delFunc isn't called 1 times: got=%d", delFuncCalled)
+	}
+}
+
+func TestLFUCache_Evict(t *testing.T) {
+	c := NewCache(NoExpiration, DefaultExpiration, NewLFU(6))
+	set(c, "1", 1, 1, nil).Release()
+	set(c, "2", 2, 1, nil).Release()
+	set(c, "1", 4, 1, nil).Release()
+	set(c, "2", 5, 1, nil).Release()
+	set(c, "1", 6, 1, nil).Release()
+	set(c, "2", 7, 1, nil).Release()
+
+	for key := 1; key < 3; key++ {
+		if h := c.Get(strconv.Itoa(key), nil); h != nil {
+			h.Release()
+		} else {
+			t.Errorf("Cache.Get on %d return nil", key)
+		}
+	}
+
+	if ok := c.Evict("1"); !ok {
+		t.Error("first Cache.Evict on #0.1 return false")
+	}
+	if ok := c.Evict("1"); ok {
+		t.Error("second Cache.Evict on #0.1 return true")
+	}
+	if h := c.Get("1", nil); h != nil {
+		t.Errorf("Cache.Get on #0.1 return non-nil: %v", h.Value())
+	}
+
+	c.EvictAll()
+	for key := 1; key < 3; key++ {
+		if h := c.Get(strconv.Itoa(key), nil); h != nil {
+			t.Errorf("Cache.Get on %d return non-nil: %v", key, h.Value())
+		}
+	}
+
+}
+
+func TestLFUCache_LFU(t *testing.T) {
+	c := NewCache(NoExpiration, DefaultExpiration, NewLFU(3))
+	set(c, "1", 1, 1, nil).Release()
+	set(c, "2", 2, 1, nil).Release()
+	set(c, "1", 4, 1, nil).Release()
+	set(c, "2", 5, 1, nil).Release()
+	set(c, "3", 6, 1, nil).Release()
+	set(c, "4", 7, 1, nil).Release()
+
+	if h := c.Get(strconv.Itoa(1), nil); h != nil {
+		h.Release()
+	} else {
+		t.Errorf("Cache.Get on 1 should not be nil")
+	}
+
+	if h := c.Get(strconv.Itoa(2), nil); h != nil {
+		h.Release()
+	} else {
+		t.Errorf("Cache.Get on 2 should not be nil")
+	}
+
+	if h := c.Get(strconv.Itoa(4), nil); h != nil {
+		h.Release()
+	} else {
+		t.Errorf("Cache.Get on 4 should not be nil")
+	}
+
+	if h := c.Get(strconv.Itoa(3), nil); h != nil {
+		t.Errorf("Cache.Get on 3 should be nil")
 	}
 }
